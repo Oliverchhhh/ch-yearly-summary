@@ -1,30 +1,22 @@
-import { OrbitControls, Stars, Sparkles, Html, useTexture } from "@react-three/drei";
+import { OrbitControls, Stars, Sparkles, Html, useTexture, useVideoTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef, useState, useMemo, useEffect } from "react";
+import { useRef, useState, useMemo, useEffect, Suspense } from "react";
 import * as THREE from "three";
 import { mainPhotos } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
 
+// =========================================================
+// 1. 氛围组：哑光色块碎片 (保持不变)
+// =========================================================
 function AtmosphereParticle({ stage, index }) {
   const ref = useRef();
-  
   const config = useMemo(() => {
     const scaleX = 0.4 + Math.random() * 1.4; 
     const scaleY = 0.4 + Math.random() * 1.4;
-
-    const colors = [
-      '#555555', 
-      '#777777', 
-      '#999999', 
-      '#bbbbbb', 
-      '#3a4750', 
-      '#8c7b70', 
-      '#c9c1ac',
-    ];
+    const colors = ['#555', '#777', '#999', '#bbb', '#3a4750', '#8c7b70', '#c9c1ac'];
     const color = colors[Math.floor(Math.random() * colors.length)];
-
     return { 
-      baseScale: new THREE.Vector3(scaleX, scaleY, 1),
+      baseScale: new THREE.Vector3(scaleX, scaleY, 1), 
       color,
       randomRot: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI]
     };
@@ -62,39 +54,69 @@ function AtmosphereParticle({ stage, index }) {
     } 
     else if (stage === 2) { 
       targetPos.copy(finalPos);
-      animScale = Math.random() * 0.6 + 0.6;
+      animScale = Math.random() * 0.6 + 0.6; 
       ref.current.rotation.x += delta * 0.03;
       ref.current.rotation.y += delta * 0.04;
     }
 
     const lerpSpeed = stage === 2 ? 0.05 : 0.04;
     ref.current.position.lerp(targetPos, lerpSpeed);
-    
     ref.current.scale.lerp(config.baseScale.clone().multiplyScalar(animScale), 0.1);
   });
 
   return (
     <mesh ref={ref} scale={[0,0,0]} rotation={config.randomRot}>
-      {/* 回归基础的平面矩形 */}
       <planeGeometry args={[1, 1]} />
-      
-      <meshBasicMaterial 
-        color={config.color} 
-        transparent 
-        opacity={0.5} 
-        depthWrite={false} 
-        side={THREE.DoubleSide} 
-      />
+      <meshBasicMaterial color={config.color} transparent opacity={0.5} depthWrite={false} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
-// 我的照片
-function PhotoStar({ data, index, spherePos, stage, onClick }) {
+// =========================================================
+// 2. 子组件：专门负责渲染图片 (Hook 安全)
+// =========================================================
+function ImagePlane({ url }) {
+  const texture = useTexture(url);
+  return (
+    <meshBasicMaterial 
+      map={texture} 
+      side={THREE.DoubleSide} 
+      transparent={true} 
+    />
+  );
+}
+
+// =========================================================
+// 3. 子组件：专门负责渲染视频 (Hook 安全)
+// =========================================================
+function VideoPlane({ url }) {
+  // 必须在这个组件内部无条件调用 Hook
+  const texture = useVideoTexture(url, { 
+    start: true, 
+    muted: true, // 必须静音才能自动播放
+    loop: true,
+    playsInline: true 
+  });
+  
+  return (
+    <meshBasicMaterial 
+      map={texture} 
+      side={THREE.DoubleSide} 
+      transparent={true} 
+      toneMapped={false} // 让视频更亮
+    />
+  );
+}
+
+// =========================================================
+// 4. 主角容器：MediaStar (逻辑分发)
+// =========================================================
+function MediaStar({ data, index, spherePos, stage, onClick }) {
   const ref = useRef();
   const [hovered, setHover] = useState(false);
-  const texture = useTexture(data.url);
+  const isVideo = data.type === 'video';
 
+  // 计算位置逻辑 (保持不变)
   const scatterPos = useMemo(() => {
     return new THREE.Vector3(
       (Math.random() - 0.5) * 150, 
@@ -131,7 +153,7 @@ function PhotoStar({ data, index, spherePos, stage, onClick }) {
     ref.current.position.lerp(targetPos, lerpSpeed);
 
     const finalScaleX = targetScale * 6;
-    const finalScaleY = targetScale * 4.5;
+    const finalScaleY = targetScale * (isVideo ? 3.375 : 4.5); // 调整视频长宽比
     ref.current.scale.lerp(new THREE.Vector3(finalScaleX, finalScaleY, 1), 0.1);
   });
 
@@ -141,13 +163,31 @@ function PhotoStar({ data, index, spherePos, stage, onClick }) {
       scale={[0.01, 0.01, 0.01]} 
       onPointerOver={() => { if(stage===2) { document.body.style.cursor = 'pointer'; setHover(true); } }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; setHover(false); }}
-      onClick={(e) => { if(stage === 2) { e.stopPropagation(); onClick(data); } }}
+      onClick={(e) => {
+        if(stage === 2) { 
+          e.stopPropagation();
+          onClick(data);
+        }
+      }}
     >
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} side={THREE.DoubleSide} transparent={true} />
+      
+      {/* 核心修复：在这里根据类型渲染不同的子组件
+          这样每个子组件里的 Hook 都是无条件执行的，符合 React 规则
+      */}
+      <Suspense fallback={<meshBasicMaterial color="black" wireframe />}>
+        {isVideo ? (
+          <VideoPlane url={data.url} />
+        ) : (
+          <ImagePlane url={data.url} />
+        )}
+      </Suspense>
+
+      {/* 悬停标签 */}
       {hovered && stage === 2 && data.date && (
         <Html distanceFactor={20} position={[0, -0.6, 0]} transform>
-          <div className="bg-black/60 backdrop-blur-sm text-white px-3 py-1 text-sm whitespace-nowrap rounded-full border border-white/30 pointer-events-none select-none">
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm text-white px-3 py-1 text-sm whitespace-nowrap rounded-full border border-white/30 pointer-events-none select-none">
+            {isVideo && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
             {data.date}
           </div>
         </Html>
@@ -156,7 +196,9 @@ function PhotoStar({ data, index, spherePos, stage, onClick }) {
   );
 }
 
-// 背景
+// =========================================================
+// 5. 宇宙容器
+// =========================================================
 function Universe({ onPhotoClick, stage }) {
   const photoPositions = useMemo(() => {
     const temp = [];
@@ -175,13 +217,19 @@ function Universe({ onPhotoClick, stage }) {
     return temp;
   }, []);
 
-  // 500 个颜色块（暂时不用了
   const atmosphereIndices = useMemo(() => Array.from({ length: 500 }, (_, i) => i), []);
 
   return (
     <group>
-      {mainPhotos.map((photo, i) => (
-        <PhotoStar key={photo.id} index={i} data={photo} spherePos={photoPositions[i]} stage={stage} onClick={onPhotoClick} />
+      {mainPhotos.map((item, i) => (
+        <MediaStar 
+          key={item.id} 
+          index={i} 
+          data={item} 
+          spherePos={photoPositions[i]} 
+          stage={stage} 
+          onClick={onPhotoClick} 
+        />
       ))}
       {atmosphereIndices.map((i) => (
         <AtmosphereParticle key={i} index={i} stage={stage} />
@@ -190,7 +238,9 @@ function Universe({ onPhotoClick, stage }) {
   );
 }
 
-// 大图展示组件 
+// =========================================================
+// 6. 大图展示组件
+// =========================================================
 function ActivePhotoOverlay({ activePhoto, onClose }) {
   return (
     <Html fullscreen style={{ pointerEvents: 'none', zIndex: 100 }}>
@@ -211,7 +261,21 @@ function ActivePhotoOverlay({ activePhoto, onClose }) {
               className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <img src={activePhoto.url} alt="Memory" className="max-h-[75vh] w-auto object-contain rounded-sm shadow-[0_0_50px_rgba(255,255,255,0.1)]" />
+              {activePhoto.type === 'video' ? (
+                <video 
+                  src={activePhoto.url} 
+                  controls 
+                  autoPlay 
+                  className="max-h-[75vh] max-w-full rounded-sm shadow-[0_0_50px_rgba(255,255,255,0.1)] outline-none"
+                />
+              ) : (
+                <img 
+                  src={activePhoto.url} 
+                  alt="Memory" 
+                  className="max-h-[75vh] w-auto object-contain rounded-sm shadow-[0_0_50px_rgba(255,255,255,0.1)]" 
+                />
+              )}
+              
               <div className="mt-6 text-center text-white space-y-2">
                 {activePhoto.date && (
                   <>
