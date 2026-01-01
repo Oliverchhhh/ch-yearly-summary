@@ -3,12 +3,9 @@ import { Suspense, useState, useRef, useEffect } from "react";
 import Experience from "./Experience";
 import { Loader } from "@react-three/drei";
 
-// UI 组件
 function UI() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(null);
-
-  // 切换逻辑：手动点击按钮时
   const toggleMusic = () => {
     if (isPlaying) {
       audioRef.current.pause();
@@ -22,25 +19,19 @@ function UI() {
 
   useEffect(() => {
     if (!audioRef.current) return;
-    
-    // 1. 设置音量
-    audioRef.current.volume = 0.5;
 
-    // 2. 尝试开场直接播放
+    audioRef.current.volume = 0.5;
     const attemptPlay = async () => {
       try {
         await audioRef.current.play();
         setIsPlaying(true);
       } catch (err) {
         console.log("浏览器拦截了自动播放，等待用户交互...");
-        // 3. 如果失败（被拦截），则添加一个一次性的全局点击监听
-        // 只要用户点了一下屏幕（哪怕是旋转地球），音乐就开始
         const startAudioOnInteraction = () => {
           audioRef.current.play().then(() => {
             setIsPlaying(true);
-            // 播放成功后，移除监听，不再打扰
             window.removeEventListener('click', startAudioOnInteraction);
-            window.removeEventListener('touchstart', startAudioOnInteraction); // 兼容手机
+            window.removeEventListener('touchstart', startAudioOnInteraction);
           }).catch(e => console.log(e));
         };
 
@@ -55,8 +46,6 @@ function UI() {
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-8 text-white mix-blend-difference">
-      
-      {/* 音乐标签：去掉斜杠，适应 GitHub Pages */}
       <audio ref={audioRef} loop src="bgm.mp3" />
 
       <header className="flex justify-between items-start">

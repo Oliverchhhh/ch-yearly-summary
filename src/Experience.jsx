@@ -5,9 +5,6 @@ import * as THREE from "three";
 import { mainPhotos } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
 
-// =========================================================
-// 1. 氛围组：哑光色块碎片 (保持不变)
-// =========================================================
 function AtmosphereParticle({ stage, index }) {
   const ref = useRef();
   const config = useMemo(() => {
@@ -72,9 +69,6 @@ function AtmosphereParticle({ stage, index }) {
   );
 }
 
-// =========================================================
-// 2. 子组件：专门负责渲染图片 (Hook 安全)
-// =========================================================
 function ImagePlane({ url }) {
   const texture = useTexture(url);
   return (
@@ -86,14 +80,10 @@ function ImagePlane({ url }) {
   );
 }
 
-// =========================================================
-// 3. 子组件：专门负责渲染视频 (Hook 安全)
-// =========================================================
 function VideoPlane({ url }) {
-  // 必须在这个组件内部无条件调用 Hook
   const texture = useVideoTexture(url, { 
     start: true, 
-    muted: true, // 必须静音才能自动播放
+    muted: true, 
     loop: true,
     playsInline: true 
   });
@@ -103,20 +93,16 @@ function VideoPlane({ url }) {
       map={texture} 
       side={THREE.DoubleSide} 
       transparent={true} 
-      toneMapped={false} // 让视频更亮
+      toneMapped={false} 
     />
   );
 }
 
-// =========================================================
-// 4. 主角容器：MediaStar (逻辑分发)
-// =========================================================
 function MediaStar({ data, index, spherePos, stage, onClick }) {
   const ref = useRef();
   const [hovered, setHover] = useState(false);
   const isVideo = data.type === 'video';
 
-  // 计算位置逻辑 (保持不变)
   const scatterPos = useMemo(() => {
     return new THREE.Vector3(
       (Math.random() - 0.5) * 150, 
@@ -153,7 +139,7 @@ function MediaStar({ data, index, spherePos, stage, onClick }) {
     ref.current.position.lerp(targetPos, lerpSpeed);
 
     const finalScaleX = targetScale * 6;
-    const finalScaleY = targetScale * (isVideo ? 3.375 : 4.5); // 调整视频长宽比
+    const finalScaleY = targetScale * (isVideo ? 3.375 : 4.5); 
     ref.current.scale.lerp(new THREE.Vector3(finalScaleX, finalScaleY, 1), 0.1);
   });
 
@@ -172,9 +158,6 @@ function MediaStar({ data, index, spherePos, stage, onClick }) {
     >
       <planeGeometry args={[1, 1]} />
       
-      {/* 核心修复：在这里根据类型渲染不同的子组件
-          这样每个子组件里的 Hook 都是无条件执行的，符合 React 规则
-      */}
       <Suspense fallback={<meshBasicMaterial color="black" wireframe />}>
         {isVideo ? (
           <VideoPlane url={data.url} />
@@ -183,7 +166,6 @@ function MediaStar({ data, index, spherePos, stage, onClick }) {
         )}
       </Suspense>
 
-      {/* 悬停标签 */}
       {hovered && stage === 2 && data.date && (
         <Html distanceFactor={20} position={[0, -0.6, 0]} transform>
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm text-white px-3 py-1 text-sm whitespace-nowrap rounded-full border border-white/30 pointer-events-none select-none">
@@ -195,10 +177,6 @@ function MediaStar({ data, index, spherePos, stage, onClick }) {
     </mesh>
   );
 }
-
-// =========================================================
-// 5. 宇宙容器
-// =========================================================
 function Universe({ onPhotoClick, stage }) {
   const photoPositions = useMemo(() => {
     const temp = [];
@@ -237,10 +215,6 @@ function Universe({ onPhotoClick, stage }) {
     </group>
   );
 }
-
-// =========================================================
-// 6. 大图展示组件
-// =========================================================
 function ActivePhotoOverlay({ activePhoto, onClose }) {
   return (
     <Html fullscreen style={{ pointerEvents: 'none', zIndex: 100 }}>
