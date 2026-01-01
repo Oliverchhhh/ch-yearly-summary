@@ -1,19 +1,11 @@
-// src/data.js
-
-// 1. 主时间轴照片 (29张精选)
-// 请根据你的实际文件名修改 url
-// src/data.js
 
 export const mainPhotos = [
-    // 第 1 张照片
     {
       id: 1,
-      url: "/images/2025/2026玉泉新年狂欢夜.jpg", // 对应你的文件名
-      description: "被鲍老师抓去帮忙，但是啥也没干hhh。", // 这里修改【一句话描述】
-      people: "好多人"        // 这里修改【和谁在一起】
+      url: "/images/2025/2026玉泉新年狂欢夜.jpg", 
+      description: "被鲍老师抓去帮忙，但是啥也没干hhh。", 
+      people: "好多人"       
     },
-    
-    // 第 2 张照片
     {
       id: 2,
       url: "/images/2025/海宁-dst.jpg",
@@ -159,8 +151,6 @@ export const mainPhotos = [
       people: "zzy,zcm,zhx"
     },
   ];
-  
-  // 下面这个不用动，保持原样即可
   export const unusedPhotoUrls = Array.from({ length: 50 }, (_, i) => 
     `/images/unused/${i + 1}.jpg`
   );

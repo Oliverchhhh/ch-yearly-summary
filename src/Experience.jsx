@@ -5,41 +5,31 @@ import * as THREE from "three";
 import { mainPhotos } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
 
-// =========================================================
-// 1. 氛围组：哑光色块碎片 (Matte Color Blocks)
-// 还原截图效果：不规则的矩形，灰色调为主的哑光纸片感
-// =========================================================
 function AtmosphereParticle({ stage, index }) {
   const ref = useRef();
   
-  // A. 随机配置 (形状与颜色)
   const config = useMemo(() => {
-    // 1. 随机拉伸比例：制造不规则的矩形 (有的细长，有的扁平)
-    // 范围从 0.4 倍到 1.8 倍，差异化很大
     const scaleX = 0.4 + Math.random() * 1.4; 
     const scaleY = 0.4 + Math.random() * 1.4;
 
-    // 2. 灰色调定制色板 (参考截图的哑光感)
     const colors = [
-      '#555555', // 中灰
-      '#777777', // 标准灰
-      '#999999', // 浅灰
-      '#bbbbbb', // 亮灰
-      '#3a4750', // 深蓝灰 (截图里的深色块)
-      '#8c7b70', // 哑光棕灰 (截图里的棕色块)
-      '#c9c1ac', // 米灰色 (截图里的亮色块)
+      '#555555', 
+      '#777777', 
+      '#999999', 
+      '#bbbbbb', 
+      '#3a4750', 
+      '#8c7b70', 
+      '#c9c1ac',
     ];
     const color = colors[Math.floor(Math.random() * colors.length)];
 
     return { 
-      baseScale: new THREE.Vector3(scaleX, scaleY, 1), // 基础不规则比例
+      baseScale: new THREE.Vector3(scaleX, scaleY, 1),
       color,
-      // 随机初始旋转角度
       randomRot: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI]
     };
   }, []);
 
-  // B. 随机位置 (包围在照片外围)
   const { finalPos, scatterPos } = useMemo(() => {
     const r = 50 + Math.random() * 60; 
     const theta = Math.random() * Math.PI * 2;
@@ -53,10 +43,9 @@ function AtmosphereParticle({ stage, index }) {
   useFrame((state, delta) => {
     if (!ref.current) return;
     const targetPos = new THREE.Vector3();
-    let animScale = 1; // 动画阶段的整体缩放系数
+    let animScale = 1; 
 
-    // --- 动画逻辑 ---
-    if (stage === 0) { // 散落
+    if (stage === 0) { 
       if (state.clock.elapsedTime < index * 0.002) {
         ref.current.scale.set(0,0,0); return;
       }
@@ -66,14 +55,14 @@ function AtmosphereParticle({ stage, index }) {
       ref.current.rotation.x += delta * 0.1;
       ref.current.rotation.y += delta * 0.1;
     } 
-    else if (stage === 1) { // 汇聚
+    else if (stage === 1) { 
       targetPos.set(0, 0, 0);
       animScale = 0.01; 
       ref.current.rotation.z += delta * 10;
     } 
-    else if (stage === 2) { // 爆炸
+    else if (stage === 2) { 
       targetPos.copy(finalPos);
-      animScale = Math.random() * 0.6 + 0.6; // 最终大小有轻微差异
+      animScale = Math.random() * 0.6 + 0.6;
       ref.current.rotation.x += delta * 0.03;
       ref.current.rotation.y += delta * 0.04;
     }
@@ -81,7 +70,6 @@ function AtmosphereParticle({ stage, index }) {
     const lerpSpeed = stage === 2 ? 0.05 : 0.04;
     ref.current.position.lerp(targetPos, lerpSpeed);
     
-    // 核心：将基础的不规则比例 * 动画缩放系数
     ref.current.scale.lerp(config.baseScale.clone().multiplyScalar(animScale), 0.1);
   });
 
@@ -93,7 +81,7 @@ function AtmosphereParticle({ stage, index }) {
       <meshBasicMaterial 
         color={config.color} 
         transparent 
-        opacity={0.5} // 半透明哑光感
+        opacity={0.5} 
         depthWrite={false} 
         side={THREE.DoubleSide} 
       />
@@ -101,9 +89,7 @@ function AtmosphereParticle({ stage, index }) {
   );
 }
 
-// =========================================================
-// 2. 主角：真实照片 (PhotoStar) - 保持不变
-// =========================================================
+// 我的照片
 function PhotoStar({ data, index, spherePos, stage, onClick }) {
   const ref = useRef();
   const [hovered, setHover] = useState(false);
@@ -170,9 +156,7 @@ function PhotoStar({ data, index, spherePos, stage, onClick }) {
   );
 }
 
-// =========================================================
-// 3. 宇宙容器
-// =========================================================
+// 背景
 function Universe({ onPhotoClick, stage }) {
   const photoPositions = useMemo(() => {
     const temp = [];
@@ -191,7 +175,7 @@ function Universe({ onPhotoClick, stage }) {
     return temp;
   }, []);
 
-  // 生成 500 个氛围色块
+  // 500 个颜色块（暂时不用了
   const atmosphereIndices = useMemo(() => Array.from({ length: 500 }, (_, i) => i), []);
 
   return (
@@ -206,7 +190,7 @@ function Universe({ onPhotoClick, stage }) {
   );
 }
 
-// 大图展示组件 (不变)
+// 大图展示组件 
 function ActivePhotoOverlay({ activePhoto, onClose }) {
   return (
     <Html fullscreen style={{ pointerEvents: 'none', zIndex: 100 }}>
